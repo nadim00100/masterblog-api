@@ -1,20 +1,23 @@
 """
 MasterBlog API - Backend Application
 
-This module initializes a Flask app with a simple in-memory
-blog post API supporting GET and POST requests.
+This module initializes a Flask app with a simple API
+that returns a list of blog posts and supports deleting posts by ID.
 """
 
-from flask import Flask, jsonify, request, abort
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 
+# Create the Flask application
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+
+# Enable Cross-Origin Resource Sharing for all routes
+CORS(app)
 
 # In-memory mock database for blog posts
 POSTS = [
-    {"id": 1, "title": "First Post", "content": "This is the first post."},
-    {"id": 2, "title": "Second Post", "content": "This is the second post."},
+    {"id": 1, "title": "First post", "content": "This is the first post."},
+    {"id": 2, "title": "Second post", "content": "This is the second post."},
 ]
 
 
@@ -29,46 +32,29 @@ def get_posts():
     return jsonify(POSTS)
 
 
-@app.route('/api/posts', methods=['POST'])
-def add_post():
+@app.route('/api/posts/<int:post_id>', methods=['DELETE'])
+def delete_post(post_id):
     """
-    Handle POST requests to add a new blog post.
+    Handle DELETE request to delete a post by its ID.
 
-    Expects JSON with 'title' and 'content' fields.
+    Args:
+        post_id (int): The ID of the post to delete.
 
     Returns:
-        The created post as JSON with status 201.
-        If missing fields, returns 400 with error message.
+        JSON message confirming deletion or error message if not found.
     """
-    data = request.get_json()
+    # Find the post by ID
+    post = next((p for p in POSTS if p["id"] == post_id), None)
 
-    # Check if JSON body exists and has required fields
-    missing_fields = []
-    if not data:
-        missing_fields = ['title', 'content']
-    else:
-        if 'title' not in data:
-            missing_fields.append('title')
-        if 'content' not in data:
-            missing_fields.append('content')
+    if post is None:
+        # Post not found: return 404 error
+        return jsonify({"message": f"Post with id {post_id} not found."}), 404
 
-    if missing_fields:
-        return (
-            jsonify({"error": f"Missing fields: {', '.join(missing_fields)}"}),
-            400,
-        )
+    # Remove the post from the list
+    POSTS.remove(post)
 
-    # Generate new ID by incrementing the max existing ID
-    new_id = max(post['id'] for post in POSTS) + 1 if POSTS else 1
-
-    new_post = {
-        "id": new_id,
-        "title": data['title'],
-        "content": data['content'],
-    }
-    POSTS.append(new_post)
-
-    return jsonify(new_post), 201
+    # Return success message
+    return jsonify({"message": f"Post with id {post_id} has been deleted successfully."}), 200
 
 
 if __name__ == '__main__':
