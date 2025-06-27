@@ -1,9 +1,8 @@
 """
 MasterBlog API - Backend Application
 
-This module provides endpoints to list, update, delete, and search blog posts.
+This module provides endpoints to list, update, delete, search, and sort blog posts.
 """
-
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -18,15 +17,41 @@ CORS(app)
 POSTS = [
     {"id": 1, "title": "First post", "content": "This is the first post."},
     {"id": 2, "title": "Second post", "content": "This is the second post."},
+    {"id": 3, "title": "Alpha post", "content": "This is an alpha post."}
 ]
 
 
 @app.route('/api/posts', methods=['GET'])
 def get_posts():
     """
-    Handle GET requests to fetch all blog posts.
+    Handle GET requests to fetch and optionally sort blog posts.
+
+    Query Parameters:
+        sort (str, optional): Field to sort by ('title' or 'content').
+        direction (str, optional): 'asc' or 'desc' (default is ascending).
+
+    Returns:
+        JSON list of posts, sorted if parameters are valid.
     """
-    return jsonify(POSTS)
+    sort_field = request.args.get('sort')
+    direction = request.args.get('direction', 'asc')
+
+    # Validate sort field if provided
+    if sort_field and sort_field not in ['title', 'content']:
+        return jsonify({"error": "Invalid sort field. Use 'title' or 'content'."}), 400
+
+    # Validate direction if provided
+    if direction not in ['asc', 'desc']:
+        return jsonify({"error": "Invalid direction. Use 'asc' or 'desc'."}), 400
+
+    result_posts = POSTS.copy()
+
+    # Apply sorting if sort field is specified
+    if sort_field:
+        reverse = direction == 'desc'
+        result_posts.sort(key=lambda post: post[sort_field].lower(), reverse=reverse)
+
+    return jsonify(result_posts)
 
 
 @app.route('/api/posts/<int:post_id>', methods=['DELETE'])
@@ -61,18 +86,10 @@ def update_post(post_id):
 def search_posts():
     """
     Handle GET request to search blog posts by title or content.
-
-    Query Parameters:
-        title (str, optional): Search term for post title.
-        content (str, optional): Search term for post content.
-
-    Returns:
-        List of posts that match the search terms.
     """
     title_query = request.args.get("title", "").lower()
     content_query = request.args.get("content", "").lower()
 
-    # Filter posts based on title/content match (case-insensitive)
     results = [
         post for post in POSTS
         if (title_query in post["title"].lower() or content_query in post["content"].lower())
@@ -82,4 +99,5 @@ def search_posts():
 
 
 if __name__ == '__main__':
+    # Run the Flask app on port 5002 for development
     app.run(host="0.0.0.0", port=5002, debug=True)
